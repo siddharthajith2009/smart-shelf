@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Shelf — Restock Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header__brand">
+        <div class="header__logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><rect x="2" y="8" width="28" height="20" rx="2" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="14" x2="30" y2="14" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="14" x2="10" y2="28" stroke="currentColor" stroke-width="1.5"/><line x1="20" y1="14" x2="20" y2="28" stroke="currentColor" stroke-width="1.5"/></svg>
+        </div>
+        <div>
+          <h1>Smart Shelf</h1>
+          <p class="header__subtitle">Live inventory &amp; restock intelligence</p>
+        </div>
+      </div>
+      <div class="header__actions">
+        <span class="status-pill" id="connectionStatus">
+          <span class="status-pill__dot"></span>
+          Connecting…
+        </span>
+        <button type="button" class="btn btn--primary" id="refreshBtn">Refresh</button>
+      </div>
+    </header>
+
+    <section class="summary-bar" id="summaryBar">
+      <div class="summary-stat">
+        <span class="summary-stat__label">Slots monitored</span>
+        <span class="summary-stat__value" id="statSlots">—</span>
+      </div>
+      <div class="summary-stat">
+        <span class="summary-stat__label">Need restock</span>
+        <span class="summary-stat__value summary-stat__value--warn" id="statRestock">—</span>
+      </div>
+      <div class="summary-stat">
+        <span class="summary-stat__label">Total events</span>
+        <span class="summary-stat__value" id="statEvents">—</span>
+      </div>
+      <div class="summary-stat">
+        <span class="summary-stat__label">Model</span>
+        <span class="summary-stat__value" id="statModel">—</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section__title">Live Slot Status</h2>
+      <div class="slot-grid" id="slotGrid">
+        <div class="loading-card">Loading slots…</div>
+      </div>
+    </section>
+
+    <div class="two-col">
+      <section class="section panel">
+        <h2 class="section__title">Event Log</h2>
+        <div class="table-wrap">
+          <table class="data-table" id="eventTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Slot</th>
+                <th>SKU</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="eventBody">
+              <tr><td colspan="4" class="empty-cell">Loading events…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section panel">
+        <div class="section__header-row">
+          <h2 class="section__title">Demand Forecast</h2>
+          <select class="select" id="skuSelect" aria-label="Select SKU"></select>
+        </div>
+        <p class="chart-caption" id="chartMae"></p>
+        <div class="chart-container">
+          <canvas id="demandChart"></canvas>
+        </div>
+      </section>
+    </div>
+
+    <section class="section">
+      <h2 class="section__title">Restock Recommendations</h2>
+      <p class="section__meta" id="configMeta"></p>
+      <div class="recommendations" id="recommendations">
+        <div class="loading-card">Loading recommendations…</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

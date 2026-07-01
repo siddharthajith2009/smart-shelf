@@ -1,0 +1,16 @@
+# Generated at runtime
+model.pkl
+events.db
+events_test.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE / debug
+.cursor/
+.DS_Store
+.env
