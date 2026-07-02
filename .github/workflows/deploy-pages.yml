@@ -29,10 +29,15 @@ jobs:
         with:
           enablement: true
 
+      - name: Prepare Pages artifact root
+        run: |
+          mkdir -p ./pages_dist
+          cp -R ./frontend/. ./pages_dist/
+
       - name: Upload frontend artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./frontend
+          path: ./pages_dist
 
       - name: Deploy to GitHub Pages
         id: deployment
