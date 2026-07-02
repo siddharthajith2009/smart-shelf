@@ -6,98 +6,143 @@
   <title>Smart Shelf — Restock Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./css/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css?v=20260702-4" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <div class="app">
-    <header class="header">
-      <div class="header__brand">
-        <div class="header__logo" aria-hidden="true">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar__brand">
+        <div class="sidebar__logo" aria-hidden="true">
           <svg viewBox="0 0 32 32" fill="none"><rect x="2" y="8" width="28" height="20" rx="2" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="14" x2="30" y2="14" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="14" x2="10" y2="28" stroke="currentColor" stroke-width="1.5"/><line x1="20" y1="14" x2="20" y2="28" stroke="currentColor" stroke-width="1.5"/></svg>
         </div>
         <div>
           <h1>Smart Shelf</h1>
-          <p class="header__subtitle">Live inventory &amp; restock intelligence</p>
+          <p>Retail Operations Console</p>
         </div>
       </div>
-      <div class="header__actions">
-        <span class="status-pill" id="connectionStatus">
-          <span class="status-pill__dot"></span>
-          Connecting…
-        </span>
-        <button type="button" class="btn btn--primary" id="refreshBtn">Refresh</button>
-      </div>
-    </header>
+      <nav class="sidebar__nav" aria-label="Main navigation">
+        <a class="sidebar__link sidebar__link--active" href="#">Overview</a>
+        <a class="sidebar__link" href="#">Inventory</a>
+        <a class="sidebar__link" href="#">Forecast</a>
+        <a class="sidebar__link" href="#">Events</a>
+        <a class="sidebar__link" href="#">Settings</a>
+      </nav>
+    </aside>
 
-    <section class="summary-bar" id="summaryBar">
-      <div class="summary-stat">
-        <span class="summary-stat__label">Slots monitored</span>
-        <span class="summary-stat__value" id="statSlots">—</span>
-      </div>
-      <div class="summary-stat">
-        <span class="summary-stat__label">Need restock</span>
-        <span class="summary-stat__value summary-stat__value--warn" id="statRestock">—</span>
-      </div>
-      <div class="summary-stat">
-        <span class="summary-stat__label">Total events</span>
-        <span class="summary-stat__value" id="statEvents">—</span>
-      </div>
-      <div class="summary-stat">
-        <span class="summary-stat__label">Model</span>
-        <span class="summary-stat__value" id="statModel">—</span>
-      </div>
-    </section>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 class="topbar__title">Inventory Overview</h2>
+          <p class="topbar__subtitle">Live shelf monitoring and restock tracking</p>
+        </div>
+        <div class="topbar__actions">
+          <span class="status-pill" id="connectionStatus">
+            <span class="status-pill__dot"></span>
+            Connecting…
+          </span>
+          <span class="meta-chip" id="modelReadyChip">Model: --</span>
+          <span class="meta-chip" id="lastUpdatedChip">Updated: --:--:--</span>
+          <button type="button" class="btn btn--primary" id="refreshBtn">Refresh</button>
+        </div>
+      </header>
 
-    <section class="section">
-      <h2 class="section__title">Live Slot Status</h2>
-      <div class="slot-grid" id="slotGrid">
-        <div class="loading-card">Loading slots…</div>
-      </div>
-    </section>
+      <section class="metrics-grid" id="summaryBar">
+        <article class="metric-card">
+          <p class="metric-card__label">Slots monitored</p>
+          <p class="metric-card__value" id="statSlots">—</p>
+          <p class="metric-card__meta">Active shelf channels</p>
+        </article>
+        <article class="metric-card metric-card--warning">
+          <p class="metric-card__label">Products needing restock</p>
+          <p class="metric-card__value summary-stat__value--warn" id="statRestock">—</p>
+          <p class="metric-card__meta">Below reorder threshold</p>
+        </article>
+        <article class="metric-card">
+          <p class="metric-card__label">Total events</p>
+          <p class="metric-card__value" id="statEvents">—</p>
+          <p class="metric-card__meta">Detected removals</p>
+        </article>
+        <article class="metric-card">
+          <p class="metric-card__label">Model status</p>
+          <p class="metric-card__value" id="statModel">—</p>
+          <p class="metric-card__meta">Forecast pipeline health</p>
+        </article>
+      </section>
 
-    <div class="two-col">
-      <section class="section panel">
-        <h2 class="section__title">Event Log</h2>
-        <div class="table-wrap">
-          <table class="data-table" id="eventTable">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Slot</th>
-                <th>SKU</th>
-                <th>Timestamp</th>
-              </tr>
-            </thead>
-            <tbody id="eventBody">
-              <tr><td colspan="4" class="empty-cell">Loading events…</td></tr>
-            </tbody>
-          </table>
+      <section class="panel">
+        <div class="section-title-row">
+          <h3 class="section__title">Shelf Status</h3>
+          <span class="section-title-row__meta">Current inventory and reorder posture</span>
+        </div>
+        <div class="inventory-head inventory-row">
+          <span>Slot</span>
+          <span>Product</span>
+          <span>SKU</span>
+          <span>Units</span>
+          <span>ROP</span>
+          <span>Stock Level</span>
+          <span>Status</span>
+          <span>Action</span>
+        </div>
+        <div class="inventory-list" id="slotGrid">
+          <div class="loading-card">Loading shelf slots…</div>
         </div>
       </section>
 
-      <section class="section panel">
-        <div class="section__header-row">
-          <h2 class="section__title">Demand Forecast</h2>
-          <select class="select" id="skuSelect" aria-label="Select SKU"></select>
+      <div class="content-grid">
+        <section class="panel panel--forecast">
+          <div class="section__header-row">
+            <div>
+              <h3 class="section__title">Demand Forecast</h3>
+              <p class="section__description">Historical demand and predicted units per day</p>
+            </div>
+            <div class="forecast-controls">
+              <span class="mae-chip" id="chartMae">Validation MAE --</span>
+              <select class="select" id="skuSelect" aria-label="Select SKU"></select>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="demandChart"></canvas>
+          </div>
+        </section>
+
+        <section class="panel panel--events">
+          <div class="section-title-row">
+            <h3 class="section__title">Event Activity</h3>
+            <span class="section-title-row__meta">Live shelf event stream</span>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="eventTable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Slot</th>
+                  <th>SKU</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody id="eventBody">
+                <tr><td colspan="4" class="empty-cell">Loading events…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="section-title-row">
+          <h3 class="section__title">Restock Recommendations</h3>
+          <span class="section-title-row__meta" id="configMeta"></span>
         </div>
-        <p class="chart-caption" id="chartMae"></p>
-        <div class="chart-container">
-          <canvas id="demandChart"></canvas>
+        <div class="recommendations" id="recommendations">
+          <div class="loading-card">Loading recommendations…</div>
         </div>
       </section>
-    </div>
-
-    <section class="section">
-      <h2 class="section__title">Restock Recommendations</h2>
-      <p class="section__meta" id="configMeta"></p>
-      <div class="recommendations" id="recommendations">
-        <div class="loading-card">Loading recommendations…</div>
-      </div>
-    </section>
+    </main>
   </div>
 
-  <script src="./js/app.js"></script>
+  <script src="./js/app.js?v=20260702-4"></script>
 </body>
 </html>

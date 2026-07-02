@@ -4,31 +4,15 @@ const POLL_MS = 10000;
 
 let demandChart = null;
 let selectedSku = null;
-let runCounter = 0;
 let demoModeActive = false;
-
-// #region agent log
-function debugLog(hypothesisId, location, message, data, runId = "initial") {
-  fetch('http://127.0.0.1:7813/ingest/c9aad611-0274-4ffd-be88-42ac0dc92c89',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f8be37'},body:JSON.stringify({sessionId:'f8be37',runId,hypothesisId,location,message,data,timestamp:Date.now()})}).catch(()=>{});
-}
-// #endregion
 
 async function fetchJSON(path) {
   const url = `${API}${path}`;
-  // #region agent log
-  debugLog("H2", "app.js:fetchJSON", "request_start", { path, url }, `run-${runCounter}`);
-  // #endregion
   const res = await fetch(url);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    // #region agent log
-    debugLog("H2", "app.js:fetchJSON", "request_failed", { path, url, status: res.status, detail: err.detail || res.statusText }, `run-${runCounter}`);
-    // #endregion
     throw new Error(err.detail || res.statusText);
   }
-  // #region agent log
-  debugLog("H4", "app.js:fetchJSON", "request_success", { path, status: res.status }, `run-${runCounter}`);
-  // #endregion
   return res.json();
 }
 
@@ -40,10 +24,13 @@ async function loadDemoData() {
 
 function setConnectionStatus(live, text) {
   const el = document.getElementById("connectionStatus");
+  const now = new Date().toLocaleTimeString();
   el.classList.remove("status-pill--live", "status-pill--error");
   if (live) el.classList.add("status-pill--live");
   else el.classList.add("status-pill--error");
   el.lastChild.textContent = text;
+  const updatedChip = document.getElementById("lastUpdatedChip");
+  if (updatedChip) updatedChip.textContent = `Updated: ${now}`;
 }
 
 function stockPercent(current, rop) {
@@ -62,25 +49,24 @@ function renderSlots(slots) {
     .map((s) => {
       const warn = s.needs_restock;
       const pct = stockPercent(s.current_stock, s.reorder_point);
+      const statusLabel = warn ? (s.shortfall > 20 ? "Critical" : "Low") : "Stable";
+      const statusClass = warn
+        ? s.shortfall > 20
+          ? "inventory-item__status--critical"
+          : "inventory-item__status--warn"
+        : "inventory-item__status--ok";
       return `
-        <article class="slot-card ${warn ? "slot-card--warn" : ""}">
-          <div class="slot-card__header">
-            <div>
-              <div class="slot-card__slot">Slot ${s.slot_id}</div>
-              <div class="slot-card__name">${s.name}</div>
-            </div>
-            <span class="slot-card__badge ${warn ? "slot-card__badge--warn" : "slot-card__badge--ok"}">
-              ${warn ? "Restock" : "OK"}
-            </span>
-          </div>
-          <div class="slot-card__stock">${s.current_stock} <span>units</span></div>
-          <div class="slot-card__meta">
-            <div>${s.sku}</div>
-            <div>ROP: <strong>${s.reorder_point}</strong></div>
-          </div>
-          <div class="slot-card__bar" aria-hidden="true">
-            <div class="slot-card__bar-fill" style="width: ${pct}%"></div>
-          </div>
+        <article class="inventory-item inventory-row">
+          <span class="inventory-item__slot">Slot ${s.slot_id}</span>
+          <span class="inventory-item__product">${s.name}</span>
+          <span class="inventory-item__sku">${s.sku}</span>
+          <span class="inventory-item__units">${s.current_stock}</span>
+          <span class="inventory-item__rop">${s.reorder_point}</span>
+          <span class="stock-bar" aria-hidden="true">
+            <span class="stock-bar__fill ${warn ? "stock-bar__fill--warn" : ""}" style="width:${pct}%"></span>
+          </span>
+          <span class="inventory-item__status ${statusClass}">${statusLabel}</span>
+          <span class="inventory-item__action">Monitor</span>
         </article>
       `;
     })
@@ -161,11 +147,20 @@ function renderRecommendations(slots, config) {
 
 function renderSummary(health, slots) {
   const restockCount = slots.filter((s) => s.needs_restock).length;
+  const modelReady = health.model_loaded;
   document.getElementById("statSlots").textContent = slots.length;
   document.getElementById("statRestock").textContent = restockCount;
   document.getElementById("statEvents").textContent = health.event_count;
-  document.getElementById("statModel").textContent = health.model_loaded ? "Ready" : "Missing";
-  document.getElementById("statModel").style.color = health.model_loaded ? "var(--ok)" : "var(--danger)";
+  const modelEl = document.getElementById("statModel");
+  modelEl.textContent = modelReady ? "Ready" : "Missing";
+  modelEl.classList.toggle("summary-stat__value--ok", modelReady);
+  modelEl.classList.toggle("summary-stat__value--danger", !modelReady);
+  const modelChip = document.getElementById("modelReadyChip");
+  if (modelChip) {
+    modelChip.textContent = `Model: ${modelReady ? "Ready" : "Missing"}`;
+    modelChip.classList.toggle("meta-chip--ok", modelReady);
+    modelChip.classList.toggle("meta-chip--danger", !modelReady);
+  }
 }
 
 function buildChartData(historical, predicted) {
@@ -182,8 +177,8 @@ function buildChartData(historical, predicted) {
       {
         label: "Historical",
         data: allDates.map((d) => (d in histMap ? histMap[d] : null)),
-        borderColor: "#8b9cb3",
-        backgroundColor: "rgba(139, 156, 179, 0.1)",
+        borderColor: "#94A3B8",
+        backgroundColor: "rgba(148, 163, 184, 0.1)",
         borderWidth: 2,
         pointRadius: 0,
         pointHitRadius: 8,
@@ -193,12 +188,12 @@ function buildChartData(historical, predicted) {
       {
         label: "Predicted",
         data: allDates.map((d) => (d in predMap ? predMap[d] : null)),
-        borderColor: "#3dd6c3",
-        backgroundColor: "rgba(61, 214, 195, 0.08)",
+        borderColor: "#22D3EE",
+        backgroundColor: "rgba(34, 211, 238, 0.12)",
         borderWidth: 2,
         borderDash: [6, 4],
         pointRadius: 3,
-        pointBackgroundColor: "#3dd6c3",
+        pointBackgroundColor: "#2DD4BF",
         tension: 0.3,
         spanGaps: false,
       },
@@ -225,18 +220,26 @@ function renderDemandChart(historical, predicted) {
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: {
-          labels: { color: "#8b9cb3", font: { family: "'DM Sans', sans-serif" } },
+          labels: { color: "#94A3B8", font: { family: "Inter, sans-serif" } },
+        },
+        tooltip: {
+          backgroundColor: "rgba(15, 23, 42, 0.96)",
+          borderColor: "rgba(148, 163, 184, 0.24)",
+          borderWidth: 1,
+          titleColor: "#F8FAFC",
+          bodyColor: "#E2E8F0",
+          displayColors: true,
         },
       },
       scales: {
         x: {
-          ticks: { color: "#8b9cb3", maxTicksLimit: 10, font: { size: 10 } },
-          grid: { color: "rgba(42, 53, 68, 0.5)" },
+          ticks: { color: "#94A3B8", maxTicksLimit: 10, font: { size: 10 } },
+          grid: { color: "rgba(100, 116, 139, 0.24)" },
         },
         y: {
-          ticks: { color: "#8b9cb3", font: { size: 11 } },
-          grid: { color: "rgba(42, 53, 68, 0.5)" },
-          title: { display: true, text: "Units / day", color: "#8b9cb3" },
+          ticks: { color: "#94A3B8", font: { size: 11 } },
+          grid: { color: "rgba(100, 116, 139, 0.24)" },
+          title: { display: true, text: "Units / day", color: "#94A3B8" },
         },
       },
     },
@@ -252,7 +255,7 @@ async function loadDemand(sku) {
 
   try {
     if (demoModeActive) {
-      caption.textContent = "Demo mode: forecast API unavailable on GitHub Pages.";
+      caption.textContent = "MAE unavailable in demo mode";
       if (demandChart) {
         demandChart.destroy();
         demandChart = null;
@@ -260,7 +263,7 @@ async function loadDemand(sku) {
       return;
     }
     const data = await fetchJSON(`/api/demand/${encodeURIComponent(sku)}`);
-    caption.textContent = data.mae != null ? `Validation MAE: ${data.mae.toFixed(2)} units/day` : "";
+    caption.textContent = data.mae != null ? `Validation MAE ${data.mae.toFixed(2)} units/day` : "Validation MAE unavailable";
     renderDemandChart(data.historical, data.predicted);
   } catch (err) {
     caption.textContent = err.message;
@@ -289,10 +292,6 @@ async function populateSkuSelect(skus, metrics) {
 }
 
 async function refresh() {
-  runCounter += 1;
-  // #region agent log
-  debugLog("H1", "app.js:refresh", "refresh_start", { runCounter, apiBase: API, origin: window.location.origin }, `run-${runCounter}`);
-  // #endregion
   try {
     if (demoModeActive) {
       return;
@@ -329,32 +328,11 @@ async function refresh() {
           await populateSkuSelect(demo.skus, demo.metrics || {});
         }
         demoModeActive = true;
-        // #region agent log
-        debugLog(
-          "H5",
-          "app.js:refresh",
-          "github_pages_demo_mode_enabled",
-          { runCounter, originalError: String(err?.message || err), isGitHubPages, apiBase: API },
-          `run-${runCounter}`
-        );
-        // #endregion
         setConnectionStatus(false, "Demo mode — backend unavailable on GitHub Pages");
         return;
       } catch (demoErr) {
-        // #region agent log
-        debugLog(
-          "H6",
-          "app.js:refresh",
-          "demo_mode_failed",
-          { runCounter, originalError: String(err?.message || err), demoError: String(demoErr?.message || demoErr) },
-          `run-${runCounter}`
-        );
-        // #endregion
       }
     }
-    // #region agent log
-    debugLog("H3", "app.js:refresh", "refresh_error", { runCounter, error: String(err?.message || err) }, `run-${runCounter}`);
-    // #endregion
     setConnectionStatus(false, `Offline — ${err.message}`);
   }
 }
