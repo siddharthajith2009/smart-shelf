@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import streamlit as st
@@ -47,6 +47,9 @@ def ensure_db() -> sqlite3.Connection:
 
 def render_slot_status(conn: sqlite3.Connection, artifact: dict | None) -> None:
     st.subheader("Live Slot Status")
+    if artifact is None:
+        st.info("Train the model (`python train_model.py`) to see slot status.")
+        return
     results = evaluate_all_slots(artifact=artifact, conn=conn)
 
     cols = st.columns(len(results) if results else 1)
@@ -70,7 +73,7 @@ def render_event_log(conn: sqlite3.Connection) -> None:
 
     df = pd.DataFrame(events)
     df["time"] = df["timestamp"].apply(
-        lambda ts: datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+        lambda ts: datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     )
     df = df[["id", "slot_id", "sku", "time"]].rename(
         columns={"id": "ID", "slot_id": "Slot", "sku": "SKU", "time": "Timestamp"}
@@ -89,7 +92,9 @@ def render_demand_chart(artifact: dict | None) -> None:
     selected_sku = st.selectbox("SKU", sku_options, key="demand_sku")
 
     sku_hist = hist[hist["item"] == selected_sku].sort_values("date")
-    last_date = datetime.strptime(str(sku_hist["date"].iloc[-1])[:10], "%Y-%m-%d")
+    last_date = datetime.strptime(str(sku_hist["date"].iloc[-1])[:10], "%Y-%m-%d").replace(
+        tzinfo=timezone.utc
+    )
     future_dates = [last_date + timedelta(days=i) for i in range(1, 15)]
     predictions = [
         predict_daily_demand(artifact, selected_sku, d) for d in future_dates
@@ -98,7 +103,7 @@ def render_demand_chart(artifact: dict | None) -> None:
         {"date": [d.strftime("%Y-%m-%d") for d in future_dates], "sales": predictions, "series": "Predicted"}
     )
 
-    hist_plot = sku_hist.rename(columns={"sales": "sales"}).copy()
+    hist_plot = sku_hist.copy()
     hist_plot["date"] = hist_plot["date"].astype(str).str[:10]
     hist_plot["series"] = "Historical"
     combined = pd.concat(
@@ -110,7 +115,7 @@ def render_demand_chart(artifact: dict | None) -> None:
     )
 
     st.line_chart(
-        combined.set_index("date").pivot_table(columns="series", values="sales"),
+        combined.pivot_table(index="date", columns="series", values="sales", aggfunc="sum"),
         use_container_width=True,
     )
 
@@ -124,6 +129,10 @@ def render_restock_recommendations(conn: sqlite3.Connection, artifact: dict | No
         f"Lead Time = {LEAD_TIME_DAYS} days · Z-score = {Z_SCORE} · "
         f"Initial stock per slot = {INITIAL_STOCK_PER_SLOT.get(1, 'N/A')}"
     )
+
+    if artifact is None:
+        st.info("Train the model (`python train_model.py`) to see restock recommendations.")
+        return
 
     results = evaluate_all_slots(artifact=artifact, conn=conn)
     for r in results:
@@ -150,20 +159,24 @@ def main() -> None:
     st.sidebar.caption("Click **Refresh now** after new serial events.")
 
     conn = ensure_db()
-    artifact = get_model()
+    try:
+        artifact = get_model()
 
-    render_slot_status(conn, artifact)
-    st.divider()
+        render_slot_status(conn, artifact)
+        st.divider()
 
-    left, right = st.columns([1, 1])
-    with left:
-        render_event_log(conn)
-    with right:
-        render_demand_chart(artifact)
+        left, right = st.columns([1, 1])
+        with left:
+            render_event_log(conn)
+        with right:
+            render_demand_chart(artifact)
 
-    st.divider()
-    render_restock_recommendations(conn, artifact)
-    conn.close()
+        st.divider()
+        render_restock_recommendations(conn, artifact)
+    finally:
+        # Streamlit reruns can raise mid-render (st.rerun, widget exceptions);
+        # without this the SQLite connection leaks on every rerun.
+        conn.close()
 
 
 if __name__ == "__main__":

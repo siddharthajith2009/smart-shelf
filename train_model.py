@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import pickle
-from datetime import datetime, timedelta
+import warnings
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -38,6 +39,9 @@ def generate_synthetic_train_csv(path: Path | None = None) -> pd.DataFrame:
     rows: list[dict] = []
 
     base_demand = {"SKU-A": 12, "SKU-B": 8, "SKU-C": 15, "SKU-D": 6}
+    for sku in skus:
+        if sku not in base_demand:
+            warnings.warn(f"No base_demand configured for {sku}; defaulting to 10")
 
     for day_offset in range(180):
         date = start + timedelta(days=day_offset)
@@ -126,12 +130,22 @@ def train_models(df: pd.DataFrame) -> dict:
             )
         )
 
+        daily = daily.sort_values("date")
+        # The raw-row guard above doesn't cover multi-store data collapsing to
+        # too few unique dates after aggregation.
+        if len(daily) < 5:
+            continue
         X = daily[FEATURE_COLS]
         y = daily["sales"]
 
+        # Chronological holdout: validate on the most recent dates. Random
+        # shuffling would leak future days into training and report an
+        # optimistic MAE for what is a forward-looking demand forecast.
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=TRAIN_TEST_SPLIT, random_state=RANDOM_STATE
+            X, y, test_size=TRAIN_TEST_SPLIT, shuffle=False
         )
+        if len(X_train) == 0 or len(X_test) == 0:
+            continue
 
         model = GradientBoostingRegressor(
             n_estimators=100,
@@ -144,18 +158,21 @@ def train_models(df: pd.DataFrame) -> dict:
         mae = mean_absolute_error(y_test, preds)
         metrics[sku] = float(mae)
 
+        # A NaN std would poison the safety-stock math downstream (comparisons
+        # against NaN are always False, so restock would never trigger).
+        std_val = daily["sales"].std(ddof=1) if len(daily) > 1 else 0.0
         models[sku] = {
             "model": model,
             "feature_cols": FEATURE_COLS,
             "historical_daily": daily[["date", "sales"]].copy(),
             "avg_daily_sales": float(daily["sales"].mean()),
-            "std_daily_sales": float(daily["sales"].std(ddof=1) if len(daily) > 1 else 0.0),
+            "std_daily_sales": 0.0 if pd.isna(std_val) else float(std_val),
         }
 
     return {
         "models": models,
         "metrics": metrics,
-        "trained_at": datetime.utcnow().isoformat(),
+        "trained_at": datetime.now(timezone.utc).isoformat(),
         "feature_cols": FEATURE_COLS,
     }
 
@@ -183,7 +200,7 @@ def predict_daily_demand(artifact: dict, sku: str, target_date: datetime | None 
     if sku not in artifact["models"]:
         return 0.0
 
-    target_date = target_date or datetime.utcnow()
+    target_date = target_date or datetime.now(timezone.utc)
     entry = artifact["models"][sku]
     model = entry["model"]
 

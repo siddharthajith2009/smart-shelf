@@ -14,3 +14,7 @@ venv/
 .cursor/
 .DS_Store
 .env
+
+# Tooling caches
+.tokensave/
+.pytest_cache/

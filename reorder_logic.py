@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import sqlite3
+import time
 from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from config import (
     DB_PATH,
@@ -15,7 +17,10 @@ from config import (
     SLOT_MAP,
     Z_SCORE,
 )
+from serial_listener import init_db
 from train_model import load_artifact, predict_daily_demand
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -40,9 +45,9 @@ class ReorderResult:
 
 
 def _connect(db_path: str | None = None) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path or str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    return conn
+    # Go through init_db so the events table exists even on a fresh database;
+    # a raw sqlite3.connect would raise "no such table: events" on first query.
+    return init_db(db_path or str(DB_PATH))
 
 
 def fetch_events(
@@ -66,7 +71,7 @@ def fetch_events(
 def count_removals_by_slot(
     conn: sqlite3.Connection, lookback_days: int = REORDER_LOOKBACK_DAYS
 ) -> dict[int, int]:
-    since = (datetime.utcnow() - timedelta(days=lookback_days)).timestamp()
+    since = time.time() - lookback_days * 86400
     rows = conn.execute(
         """
         SELECT slot_id, COUNT(*) AS cnt
@@ -82,8 +87,15 @@ def count_removals_by_slot(
 def observed_daily_std_by_sku(
     conn: sqlite3.Connection, lookback_days: int = REORDER_LOOKBACK_DAYS
 ) -> dict[str, float]:
-    """Std-dev of daily removal counts per SKU over the lookback window."""
-    since = (datetime.utcnow() - timedelta(days=lookback_days)).timestamp()
+    """Sample std-dev of *daily* removal counts per SKU over the lookback window.
+
+    Every calendar day from a SKU's first observed event (within the window)
+    through today is one sample — days with no removals count as 0 demand rather
+    than being dropped, so quiet days don't inflate the mean or distort variance.
+    Fewer than two days of history returns 0.0, which makes ``compute_reorder``
+    fall back to the model's historical std instead of guessing from one point.
+    """
+    since = time.time() - lookback_days * 86400
     rows = conn.execute(
         """
         SELECT sku,
@@ -96,20 +108,34 @@ def observed_daily_std_by_sku(
         (since,),
     ).fetchall()
 
-    by_sku: dict[str, list[int]] = {}
-    for sku, _day, removals in rows:
-        by_sku.setdefault(sku, []).append(int(removals))
+    # sku -> {day (YYYY-MM-DD, UTC) -> removals}
+    counts: dict[str, dict[str, int]] = {}
+    for sku, day, removals in rows:
+        counts.setdefault(sku, {})[day] = int(removals)
 
+    today = datetime.now(timezone.utc).date()
     result: dict[str, float] = {}
-    for sku, daily_counts in by_sku.items():
-        if len(daily_counts) > 1:
-            mean = sum(daily_counts) / len(daily_counts)
-            var = sum((x - mean) ** 2 for x in daily_counts) / (len(daily_counts) - 1)
-            result[sku] = math.sqrt(var)
-        elif len(daily_counts) == 1:
-            result[sku] = float(daily_counts[0])
-        else:
+    for sku, day_counts in counts.items():
+        first_day = min(
+            datetime.strptime(d, "%Y-%m-%d").date() for d in day_counts
+        )
+        span_days = (today - first_day).days + 1
+        if span_days < 2:
+            logger.debug(
+                "SKU %s has only %d day(s) of observed history; "
+                "falling back to the model's historical std",
+                sku,
+                span_days,
+            )
             result[sku] = 0.0
+            continue
+        series = [
+            day_counts.get((first_day + timedelta(days=i)).strftime("%Y-%m-%d"), 0)
+            for i in range(span_days)
+        ]
+        mean = sum(series) / len(series)
+        var = sum((x - mean) ** 2 for x in series) / (len(series) - 1)
+        result[sku] = math.sqrt(var)
     return result
 
 
@@ -151,7 +177,7 @@ def compute_reorder(
         if artifact is None:
             artifact = load_artifact()
 
-        predicted = predict_daily_demand(artifact, sku)
+        predicted = predict_daily_demand(artifact, sku, datetime.now(timezone.utc))
         model_entry = artifact["models"].get(sku, {})
         avg_daily = float(model_entry.get("avg_daily_sales", predicted))
         hist_std = float(model_entry.get("std_daily_sales", 0.0))
@@ -165,7 +191,7 @@ def compute_reorder(
 
         current_stock, _ = current_stock_for_slot(conn, slot_id)
         removals_window = count_removals_by_slot(conn).get(slot_id, 0)
-        needs_restock = current_stock <= reorder_point
+        needs_restock = current_stock < reorder_point
         shortfall = max(0.0, reorder_point - current_stock)
 
         return ReorderResult(

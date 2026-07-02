@@ -8,9 +8,6 @@ async function fetchJSON(path) {
   const res = await fetch(`${API}${path}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    // #region agent log
-    fetch('http://127.0.0.1:7813/ingest/c9aad611-0274-4ffd-be88-42ac0dc92c89',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f8be37'},body:JSON.stringify({sessionId:'f8be37',hypothesisId:'E',location:'app.js:fetchJSON',message:'fetch_failed',data:{path,status:res.status,detail:err.detail||res.statusText},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     throw new Error(err.detail || res.statusText);
   }
   return res.json();

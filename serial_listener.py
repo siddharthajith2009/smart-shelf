@@ -5,21 +5,22 @@ from __future__ import annotations
 import re
 import sqlite3
 import sys
-import time
-from datetime import datetime
-
-import serial
+from datetime import datetime, timezone
 
 from config import BAUD_RATE, DB_PATH, SERIAL_PORT, SERIAL_TIMEOUT, SLOT_MAP
 
+# Slot IDs must be positive integers (no zero, no leading zeros).
 EVENT_PATTERN = re.compile(
-    r"^SLOT:(?P<slot_id>\d+),TS:(?P<timestamp>\d+(?:\.\d+)?)\s*$"
+    r"^SLOT:(?P<slot_id>[1-9]\d*),TS:(?P<timestamp>\d+(?:\.\d+)?)\s*$"
 )
 
 
 def init_db(db_path: str | None = None) -> sqlite3.Connection:
     path = db_path or str(DB_PATH)
     conn = sqlite3.connect(path, check_same_thread=False)
+    # Name-keyed rows so every consumer (API + dashboard) can do dict(row);
+    # reorder_logic.fetch_events relies on this.
+    conn.row_factory = sqlite3.Row
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS events (
@@ -75,12 +76,16 @@ def handle_line(conn: sqlite3.Connection, line: str) -> bool:
         return False
 
     log_event(conn, slot_id, sku, ts)
-    when = datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+    when = datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     print(f"[event] slot={slot_id} sku={sku} ts={when}")
     return True
 
 
 def listen(port: str | None = None, baud: int | None = None) -> None:
+    # Imported lazily so init_db / parsing helpers can be used (by the API and
+    # dashboard) on hosts that don't have pyserial or the hardware installed.
+    import serial
+
     port = port or SERIAL_PORT
     baud = baud or BAUD_RATE
     conn = init_db()
@@ -91,15 +96,18 @@ def listen(port: str | None = None, baud: int | None = None) -> None:
 
     try:
         with serial.Serial(port, baud, timeout=SERIAL_TIMEOUT) as ser:
-            buffer = ""
+            # Buffer raw bytes and only decode complete lines: decoding each
+            # chunk separately corrupts multi-byte UTF-8 sequences that get
+            # split across two reads.
+            buffer = b""
             while True:
                 chunk = ser.read(ser.in_waiting or 1)
                 if not chunk:
                     continue
-                buffer += chunk.decode("utf-8", errors="replace")
-                while "\n" in buffer:
-                    line, buffer = buffer.split("\n", 1)
-                    handle_line(conn, line)
+                buffer += chunk
+                while b"\n" in buffer:
+                    raw_line, buffer = buffer.split(b"\n", 1)
+                    handle_line(conn, raw_line.decode("utf-8", errors="replace"))
     except serial.SerialException as exc:
         print(f"[error] Serial connection failed: {exc}", file=sys.stderr)
         print(

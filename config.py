@@ -17,6 +17,9 @@ SERIAL_TIMEOUT = 1.0
 # Slot → SKU mapping (static, deliberate simplification)
 SLOT_MAP: dict[int, dict[str, str]] = {
     1: {"sku": "SKU-A", "name": "Product A"},
+    2: {"sku": "SKU-B", "name": "Product B"},
+    3: {"sku": "SKU-C", "name": "Product C"},
+    4: {"sku": "SKU-D", "name": "Product D"},
 }
 
 # Inventory / reorder tunables
