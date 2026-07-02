@@ -1,15 +1,40 @@
-const API = "";
+const isGitHubPages = window.location.hostname.endsWith("github.io");
+const API = window.SMART_SHELF_API_BASE || "";
 const POLL_MS = 10000;
 
 let demandChart = null;
 let selectedSku = null;
+let runCounter = 0;
+let demoModeActive = false;
+
+// #region agent log
+function debugLog(hypothesisId, location, message, data, runId = "initial") {
+  fetch('http://127.0.0.1:7813/ingest/c9aad611-0274-4ffd-be88-42ac0dc92c89',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f8be37'},body:JSON.stringify({sessionId:'f8be37',runId,hypothesisId,location,message,data,timestamp:Date.now()})}).catch(()=>{});
+}
+// #endregion
 
 async function fetchJSON(path) {
-  const res = await fetch(`${API}${path}`);
+  const url = `${API}${path}`;
+  // #region agent log
+  debugLog("H2", "app.js:fetchJSON", "request_start", { path, url }, `run-${runCounter}`);
+  // #endregion
+  const res = await fetch(url);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
+    // #region agent log
+    debugLog("H2", "app.js:fetchJSON", "request_failed", { path, url, status: res.status, detail: err.detail || res.statusText }, `run-${runCounter}`);
+    // #endregion
     throw new Error(err.detail || res.statusText);
   }
+  // #region agent log
+  debugLog("H4", "app.js:fetchJSON", "request_success", { path, status: res.status }, `run-${runCounter}`);
+  // #endregion
+  return res.json();
+}
+
+async function loadDemoData() {
+  const res = await fetch("./demo-data.json");
+  if (!res.ok) throw new Error("Demo data not found");
   return res.json();
 }
 
@@ -226,6 +251,14 @@ async function loadDemand(sku) {
   }
 
   try {
+    if (demoModeActive) {
+      caption.textContent = "Demo mode: forecast API unavailable on GitHub Pages.";
+      if (demandChart) {
+        demandChart.destroy();
+        demandChart = null;
+      }
+      return;
+    }
     const data = await fetchJSON(`/api/demand/${encodeURIComponent(sku)}`);
     caption.textContent = data.mae != null ? `Validation MAE: ${data.mae.toFixed(2)} units/day` : "";
     renderDemandChart(data.historical, data.predicted);
@@ -256,7 +289,14 @@ async function populateSkuSelect(skus, metrics) {
 }
 
 async function refresh() {
+  runCounter += 1;
+  // #region agent log
+  debugLog("H1", "app.js:refresh", "refresh_start", { runCounter, apiBase: API, origin: window.location.origin }, `run-${runCounter}`);
+  // #endregion
   try {
+    if (demoModeActive) {
+      return;
+    }
     const [health, config, slotsData, eventsData, skuData] = await Promise.all([
       fetchJSON("/api/health"),
       fetchJSON("/api/config"),
@@ -278,6 +318,43 @@ async function refresh() {
     const now = new Date().toLocaleTimeString();
     setConnectionStatus(true, `Live · ${now}`);
   } catch (err) {
+    if (isGitHubPages && !demoModeActive) {
+      try {
+        const demo = await loadDemoData();
+        renderSummary(demo.health, demo.slots);
+        renderSlots(demo.slots);
+        renderEvents(demo.events);
+        renderRecommendations(demo.slots, demo.config);
+        if (demo.skus.length) {
+          await populateSkuSelect(demo.skus, demo.metrics || {});
+        }
+        demoModeActive = true;
+        // #region agent log
+        debugLog(
+          "H5",
+          "app.js:refresh",
+          "github_pages_demo_mode_enabled",
+          { runCounter, originalError: String(err?.message || err), isGitHubPages, apiBase: API },
+          `run-${runCounter}`
+        );
+        // #endregion
+        setConnectionStatus(false, "Demo mode — backend unavailable on GitHub Pages");
+        return;
+      } catch (demoErr) {
+        // #region agent log
+        debugLog(
+          "H6",
+          "app.js:refresh",
+          "demo_mode_failed",
+          { runCounter, originalError: String(err?.message || err), demoError: String(demoErr?.message || demoErr) },
+          `run-${runCounter}`
+        );
+        // #endregion
+      }
+    }
+    // #region agent log
+    debugLog("H3", "app.js:refresh", "refresh_error", { runCounter, error: String(err?.message || err) }, `run-${runCounter}`);
+    // #endregion
     setConnectionStatus(false, `Offline — ${err.message}`);
   }
 }

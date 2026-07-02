@@ -1,0 +1,57 @@
+{
+  "health": {
+    "status": "ok",
+    "model_loaded": true,
+    "event_count": 35
+  },
+  "config": {
+    "lead_time_days": 7,
+    "z_score": 1.65,
+    "initial_stock_per_slot": {
+      "1": 50
+    }
+  },
+  "slots": [
+    {
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "name": "Product A",
+      "current_stock": 15,
+      "removals_in_window": 35,
+      "predicted_daily_demand": 28.08,
+      "avg_daily_sales": 25.54,
+      "std_daily_demand": 7.78,
+      "lead_time_days": 7,
+      "z_score": 1.65,
+      "safety_stock": 33.96,
+      "reorder_point": 212.73,
+      "needs_restock": true,
+      "shortfall": 197.73,
+      "reorder_math": "Safety Stock = Z × σ × √Lead Time\n             = 1.65 × 7.78 × √7\n             = 33.96\n\nReorder Point = (Avg Daily Sales × Lead Time) + Safety Stock\n              = (25.54 × 7) + 33.96\n              = 212.73\n\nCurrent stock: 15\nNeeds restock: YES"
+    }
+  ],
+  "events": [
+    {
+      "id": 1,
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "time": "2026-07-01 11:17:00"
+    },
+    {
+      "id": 2,
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "time": "2026-07-01 10:17:00"
+    },
+    {
+      "id": 3,
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "time": "2026-07-01 09:17:00"
+    }
+  ],
+  "skus": ["SKU-A"],
+  "metrics": {
+    "SKU-A": 3.08
+  }
+}
