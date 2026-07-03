@@ -1,9 +1,13 @@
 import DemoOne from "@/components/demo";
+import ScrollElementDemo from "@/components/scroll-element-demo";
 
 function App() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6">
-      <DemoOne />
+    <main className="min-h-screen bg-background">
+      <div className="flex items-center justify-center p-6 py-16">
+        <DemoOne />
+      </div>
+      <ScrollElementDemo />
     </main>
   );
 }

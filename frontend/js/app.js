@@ -663,5 +663,32 @@ const spy = new IntersectionObserver(
 );
 sections.forEach((section) => spy.observe(section));
 
+/* ---------- Scroll reveal ---------- */
+
+const revealTargets = [
+  ...document.querySelectorAll(".kpi, .main > .card, .split > .card, .duo > .card, .foot"),
+];
+
+if ("IntersectionObserver" in window) {
+  const revealObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-visible");
+        revealObserver.unobserve(entry.target);
+      });
+    },
+    { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
+  );
+
+  revealTargets.forEach((el, i) => {
+    el.classList.add("reveal");
+    if (el.classList.contains("kpi")) {
+      el.style.setProperty("--reveal-delay", `${(i % 4) * 70}ms`);
+    }
+    revealObserver.observe(el);
+  });
+}
+
 refresh();
 setInterval(refresh, POLL_MS);
