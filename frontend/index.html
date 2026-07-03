@@ -3,146 +3,231 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart Shelf — Restock Dashboard</title>
+  <title>Smart Shelf — Inventory Operations</title>
+  <meta name="description" content="Live shelf inventory, demand forecasts, and reorder guidance." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./css/styles.css?v=20260702-4" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css?v=20260704-3" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <div class="layout">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="shell">
+
     <aside class="sidebar">
-      <div class="sidebar__brand">
-        <div class="sidebar__logo" aria-hidden="true">
-          <svg viewBox="0 0 32 32" fill="none"><rect x="2" y="8" width="28" height="20" rx="2" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="14" x2="30" y2="14" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="14" x2="10" y2="28" stroke="currentColor" stroke-width="1.5"/><line x1="20" y1="14" x2="20" y2="28" stroke="currentColor" stroke-width="1.5"/></svg>
-        </div>
-        <div>
-          <h1>Smart Shelf</h1>
-          <p>Retail Operations Console</p>
+      <div class="sidebar__top">
+        <a class="brand" href="#overview">
+          <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="brand__name">Smart Shelf</span>
+        </a>
+        <button type="button" class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="sidebarPanel">
+          <span class="nav-toggle__bar" aria-hidden="true"></span>
+          <span class="nav-toggle__bar" aria-hidden="true"></span>
+          <span class="visually-hidden">Toggle navigation</span>
+        </button>
+      </div>
+
+      <div class="sidebar__panel" id="sidebarPanel">
+        <nav class="sidebar__nav" aria-label="Sections">
+          <span class="sidebar__label">Monitor</span>
+          <a class="nav-link is-active" href="#overview">Overview</a>
+          <a class="nav-link" href="#inventory">Shelf status</a>
+          <a class="nav-link" href="#activity">Removal activity</a>
+          <a class="nav-link" href="#forecast">Demand forecast</a>
+          <a class="nav-link" href="#events">Event log</a>
+          <span class="sidebar__label">Act</span>
+          <a class="nav-link" href="#restock">Restock plan</a>
+          <a class="nav-link nav-link--external" href="/docs" target="_blank" rel="noopener">API reference</a>
+        </nav>
+
+        <div class="sidebar__foot">
+          <div class="sys-row" id="connectionStatus">
+            <span class="sys-dot" aria-hidden="true"></span>
+            <span class="sys-text">Connecting…</span>
+          </div>
+          <div class="sys-row sys-row--muted" id="modelReadyChip">Model —</div>
+          <div class="sys-row sys-row--muted" id="lastUpdatedChip">Synced —</div>
         </div>
       </div>
-      <nav class="sidebar__nav" aria-label="Main navigation">
-        <a class="sidebar__link sidebar__link--active" href="#">Overview</a>
-        <a class="sidebar__link" href="#">Inventory</a>
-        <a class="sidebar__link" href="#">Forecast</a>
-        <a class="sidebar__link" href="#">Events</a>
-        <a class="sidebar__link" href="#">Settings</a>
-      </nav>
     </aside>
 
-    <main class="main">
-      <header class="topbar">
-        <div>
-          <h2 class="topbar__title">Inventory Overview</h2>
-          <p class="topbar__subtitle">Live shelf monitoring and restock tracking</p>
-        </div>
-        <div class="topbar__actions">
-          <span class="status-pill" id="connectionStatus">
-            <span class="status-pill__dot"></span>
-            Connecting…
-          </span>
-          <span class="meta-chip" id="modelReadyChip">Model: --</span>
-          <span class="meta-chip" id="lastUpdatedChip">Updated: --:--:--</span>
-          <button type="button" class="btn btn--primary" id="refreshBtn">Refresh</button>
+    <main class="main" id="main">
+
+      <header class="page-head" id="overview">
+        <p class="eyebrow">Operations · Shelf 01</p>
+        <div class="page-head__row">
+          <div class="page-head__intro">
+            <h1>Inventory overview</h1>
+            <p class="page-head__sub">
+              Live stock levels from the shelf sensors, demand forecasts, and reorder
+              guidance. Data refreshes automatically every ten seconds.
+            </p>
+          </div>
+          <div class="page-head__actions">
+            <a class="btn btn--ghost" href="/docs" target="_blank" rel="noopener">API docs</a>
+            <button type="button" class="btn btn--primary" id="refreshBtn">Refresh data</button>
+          </div>
         </div>
       </header>
 
-      <section class="metrics-grid" id="summaryBar">
-        <article class="metric-card">
-          <p class="metric-card__label">Slots monitored</p>
-          <p class="metric-card__value" id="statSlots">—</p>
-          <p class="metric-card__meta">Active shelf channels</p>
+      <section class="kpis" aria-label="Key figures">
+        <article class="kpi">
+          <p class="kpi__label">Slots monitored</p>
+          <p class="kpi__value" id="statSlots">—</p>
+          <p class="kpi__hint" id="hintSlots">Waiting for sensor data</p>
         </article>
-        <article class="metric-card metric-card--warning">
-          <p class="metric-card__label">Products needing restock</p>
-          <p class="metric-card__value summary-stat__value--warn" id="statRestock">—</p>
-          <p class="metric-card__meta">Below reorder threshold</p>
+        <article class="kpi">
+          <p class="kpi__label">Below reorder point</p>
+          <p class="kpi__value" id="statRestock">—</p>
+          <p class="kpi__hint" id="hintRestock">Waiting for sensor data</p>
         </article>
-        <article class="metric-card">
-          <p class="metric-card__label">Total events</p>
-          <p class="metric-card__value" id="statEvents">—</p>
-          <p class="metric-card__meta">Detected removals</p>
+        <article class="kpi">
+          <p class="kpi__label">Events recorded</p>
+          <p class="kpi__value" id="statEvents">—</p>
+          <p class="kpi__hint" id="hintEvents">Waiting for sensor data</p>
         </article>
-        <article class="metric-card">
-          <p class="metric-card__label">Model status</p>
-          <p class="metric-card__value" id="statModel">—</p>
-          <p class="metric-card__meta">Forecast pipeline health</p>
+        <article class="kpi">
+          <p class="kpi__label">Forecast model</p>
+          <p class="kpi__value" id="statModel">—</p>
+          <p class="kpi__hint" id="hintModel">Waiting for sensor data</p>
         </article>
       </section>
 
-      <section class="panel">
-        <div class="section-title-row">
-          <h3 class="section__title">Shelf Status</h3>
-          <span class="section-title-row__meta">Current inventory and reorder posture</span>
-        </div>
-        <div class="inventory-head inventory-row">
-          <span>Slot</span>
-          <span>Product</span>
-          <span>SKU</span>
-          <span>Units</span>
-          <span>ROP</span>
-          <span>Stock Level</span>
-          <span>Status</span>
-          <span>Action</span>
-        </div>
-        <div class="inventory-list" id="slotGrid">
-          <div class="loading-card">Loading shelf slots…</div>
-        </div>
-      </section>
-
-      <div class="content-grid">
-        <section class="panel panel--forecast">
-          <div class="section__header-row">
-            <div>
-              <h3 class="section__title">Demand Forecast</h3>
-              <p class="section__description">Historical demand and predicted units per day</p>
-            </div>
-            <div class="forecast-controls">
-              <span class="mae-chip" id="chartMae">Validation MAE --</span>
-              <select class="select" id="skuSelect" aria-label="Select SKU"></select>
-            </div>
+      <div class="split">
+      <section class="card" id="inventory" aria-labelledby="inventoryTitle">
+        <header class="card__head">
+          <div>
+            <h2 id="inventoryTitle">Shelf status</h2>
+            <p>Units on hand, measured against each slot’s reorder point.</p>
           </div>
-          <div class="chart-container">
-            <canvas id="demandChart"></canvas>
+          <div class="legend" aria-hidden="true">
+            <span class="legend__item"><span class="legend__swatch legend__swatch--fill"></span>On hand</span>
+            <span class="legend__item"><span class="legend__swatch legend__swatch--tick"></span>Reorder point</span>
+          </div>
+        </header>
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">Slot</th>
+                <th scope="col">Product</th>
+                <th scope="col">SKU</th>
+                <th scope="col" class="num">Units</th>
+                <th scope="col" class="num">Reorder&nbsp;pt</th>
+                <th scope="col" class="table__rail-col">Stock level</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody id="slotGrid">
+              <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card card--activity" id="activity" aria-labelledby="activityTitle">
+        <header class="card__head">
+          <div>
+            <h2 id="activityTitle">Removal activity</h2>
+            <p>Units taken from the shelf.</p>
+          </div>
+          <a class="btn btn--ghost btn--sm" href="#events">View log</a>
+        </header>
+        <div class="activity">
+          <div class="activity__figure">
+            <span class="activity__total" id="activityTotal">—</span>
+            <span class="activity__unit">units</span>
+            <span class="badge badge--ok" id="activityChange" hidden>+0%</span>
+          </div>
+          <div class="segmented" id="activityPeriods" role="group" aria-label="Time period">
+            <button type="button" data-period="1d">1D</button>
+            <button type="button" data-period="1w">1W</button>
+            <button type="button" data-period="1m" class="is-active" aria-pressed="true">1M</button>
+            <button type="button" data-period="3m">3M</button>
+            <button type="button" data-period="all">All</button>
+          </div>
+          <div class="activity__chart">
+            <canvas id="activityChart" role="img" aria-label="Removals over time"></canvas>
+          </div>
+          <ul class="activity__list" id="activityList">
+            <li class="activity__loading"><span class="skeleton"></span></li>
+            <li class="activity__loading"><span class="skeleton"></span></li>
+          </ul>
+        </div>
+      </section>
+      </div>
+
+      <div class="duo">
+        <section class="card" id="forecast" aria-labelledby="forecastTitle">
+          <header class="card__head">
+            <div>
+              <h2 id="forecastTitle">Demand forecast</h2>
+              <p id="chartMae">Validation MAE —</p>
+            </div>
+            <div class="field">
+              <label class="field__label" for="skuSelect">Product</label>
+              <select class="select" id="skuSelect">
+                <option value="">Loading…</option>
+              </select>
+            </div>
+          </header>
+          <div class="chart-box">
+            <canvas id="demandChart" role="img" aria-label="Historical and predicted daily demand"></canvas>
           </div>
         </section>
 
-        <section class="panel panel--events">
-          <div class="section-title-row">
-            <h3 class="section__title">Event Activity</h3>
-            <span class="section-title-row__meta">Live shelf event stream</span>
-          </div>
-          <div class="table-wrap">
-            <table class="data-table" id="eventTable">
+        <section class="card" id="events" aria-labelledby="eventsTitle">
+          <header class="card__head">
+            <div>
+              <h2 id="eventsTitle">Event log</h2>
+              <p>Latest sensor readings, newest first.</p>
+            </div>
+          </header>
+          <div class="table-scroll table-scroll--tall">
+            <table class="table table--compact">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Slot</th>
-                  <th>SKU</th>
-                  <th>Timestamp</th>
+                  <th scope="col" class="num">#</th>
+                  <th scope="col" class="num">Slot</th>
+                  <th scope="col">SKU</th>
+                  <th scope="col">Recorded</th>
                 </tr>
               </thead>
               <tbody id="eventBody">
-                <tr><td colspan="4" class="empty-cell">Loading events…</td></tr>
+                <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
               </tbody>
             </table>
           </div>
         </section>
       </div>
 
-      <section class="panel">
-        <div class="section-title-row">
-          <h3 class="section__title">Restock Recommendations</h3>
-          <span class="section-title-row__meta" id="configMeta"></span>
-        </div>
-        <div class="recommendations" id="recommendations">
-          <div class="loading-card">Loading recommendations…</div>
+      <section class="card" id="restock" aria-labelledby="restockTitle">
+        <header class="card__head">
+          <div>
+            <h2 id="restockTitle">Restock plan</h2>
+            <p id="configMeta">—</p>
+          </div>
+        </header>
+        <div class="plan" id="recommendations">
+          <div class="skeleton skeleton--block"></div>
+          <div class="skeleton skeleton--block"></div>
         </div>
       </section>
+
+      <footer class="foot">
+        <span>Smart Shelf</span>
+        <span>Sensor events stored in SQLite · Forecasts by gradient boosting</span>
+      </footer>
+
     </main>
   </div>
 
-  <script src="./js/app.js?v=20260702-4"></script>
+  <script src="./js/app.js?v=20260704-3"></script>
 </body>
 </html>

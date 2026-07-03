@@ -15,6 +15,14 @@ venv/
 .DS_Store
 .env
 
+# Local AI agent skills (installed per-machine via skills CLI)
+.agents/
+skills-lock.json
+
+# Node
+node_modules/
+frontend-react/dist/
+
 # Tooling caches
 .tokensave/
 .pytest_cache/

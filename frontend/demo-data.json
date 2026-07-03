@@ -8,7 +8,10 @@
     "lead_time_days": 7,
     "z_score": 1.65,
     "initial_stock_per_slot": {
-      "1": 50
+      "1": 50,
+      "2": 50,
+      "3": 50,
+      "4": 50
     }
   },
   "slots": [
@@ -18,16 +21,67 @@
       "name": "Product A",
       "current_stock": 15,
       "removals_in_window": 35,
-      "predicted_daily_demand": 28.08,
+      "predicted_daily_demand": 26.99,
       "avg_daily_sales": 25.54,
-      "std_daily_demand": 7.78,
+      "std_daily_demand": 11.06,
       "lead_time_days": 7,
       "z_score": 1.65,
-      "safety_stock": 33.96,
-      "reorder_point": 212.73,
+      "safety_stock": 48.27,
+      "reorder_point": 227.04,
       "needs_restock": true,
-      "shortfall": 197.73,
-      "reorder_math": "Safety Stock = Z × σ × √Lead Time\n             = 1.65 × 7.78 × √7\n             = 33.96\n\nReorder Point = (Avg Daily Sales × Lead Time) + Safety Stock\n              = (25.54 × 7) + 33.96\n              = 212.73\n\nCurrent stock: 15\nNeeds restock: YES"
+      "shortfall": 212.04,
+      "reorder_math": "Safety Stock = Z \u00d7 \u03c3 \u00d7 \u221aLead Time\n             = 1.65 \u00d7 11.06 \u00d7 \u221a7\n             = 48.27\n\nReorder Point = (Avg Daily Sales \u00d7 Lead Time) + Safety Stock\n              = (25.54 \u00d7 7) + 48.27\n              = 227.04\n\nCurrent stock: 15\nNeeds restock: YES"
+    },
+    {
+      "slot_id": 2,
+      "sku": "SKU-B",
+      "name": "Product B",
+      "current_stock": 50,
+      "removals_in_window": 0,
+      "predicted_daily_demand": 17.1,
+      "avg_daily_sales": 16.97,
+      "std_daily_demand": 3.69,
+      "lead_time_days": 7,
+      "z_score": 1.65,
+      "safety_stock": 16.13,
+      "reorder_point": 134.9,
+      "needs_restock": true,
+      "shortfall": 84.9,
+      "reorder_math": "Safety Stock = Z \u00d7 \u03c3 \u00d7 \u221aLead Time\n             = 1.65 \u00d7 3.69 \u00d7 \u221a7\n             = 16.13\n\nReorder Point = (Avg Daily Sales \u00d7 Lead Time) + Safety Stock\n              = (16.97 \u00d7 7) + 16.13\n              = 134.9\n\nCurrent stock: 50\nNeeds restock: YES"
+    },
+    {
+      "slot_id": 3,
+      "sku": "SKU-C",
+      "name": "Product C",
+      "current_stock": 50,
+      "removals_in_window": 0,
+      "predicted_daily_demand": 30.61,
+      "avg_daily_sales": 32.03,
+      "std_daily_demand": 6.5,
+      "lead_time_days": 7,
+      "z_score": 1.65,
+      "safety_stock": 28.38,
+      "reorder_point": 252.61,
+      "needs_restock": true,
+      "shortfall": 202.61,
+      "reorder_math": "Safety Stock = Z \u00d7 \u03c3 \u00d7 \u221aLead Time\n             = 1.65 \u00d7 6.5 \u00d7 \u221a7\n             = 28.38\n\nReorder Point = (Avg Daily Sales \u00d7 Lead Time) + Safety Stock\n              = (32.03 \u00d7 7) + 28.38\n              = 252.61\n\nCurrent stock: 50\nNeeds restock: YES"
+    },
+    {
+      "slot_id": 4,
+      "sku": "SKU-D",
+      "name": "Product D",
+      "current_stock": 50,
+      "removals_in_window": 0,
+      "predicted_daily_demand": 15.21,
+      "avg_daily_sales": 12.92,
+      "std_daily_demand": 2.51,
+      "lead_time_days": 7,
+      "z_score": 1.65,
+      "safety_stock": 10.96,
+      "reorder_point": 101.37,
+      "needs_restock": true,
+      "shortfall": 51.37,
+      "reorder_math": "Safety Stock = Z \u00d7 \u03c3 \u00d7 \u221aLead Time\n             = 1.65 \u00d7 2.51 \u00d7 \u221a7\n             = 10.96\n\nReorder Point = (Avg Daily Sales \u00d7 Lead Time) + Safety Stock\n              = (12.92 \u00d7 7) + 10.96\n              = 101.37\n\nCurrent stock: 50\nNeeds restock: YES"
     }
   ],
   "events": [
@@ -48,10 +102,60 @@
       "slot_id": 1,
       "sku": "SKU-A",
       "time": "2026-07-01 09:17:00"
+    },
+    {
+      "id": 4,
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "time": "2026-07-01 08:17:00"
+    },
+    {
+      "id": 5,
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "time": "2026-07-01 07:17:00"
+    },
+    {
+      "id": 6,
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "time": "2026-07-01 06:17:00"
+    },
+    {
+      "id": 7,
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "time": "2026-07-01 05:17:00"
+    },
+    {
+      "id": 8,
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "time": "2026-07-01 04:17:00"
+    },
+    {
+      "id": 9,
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "time": "2026-07-01 03:17:00"
+    },
+    {
+      "id": 10,
+      "slot_id": 1,
+      "sku": "SKU-A",
+      "time": "2026-07-01 02:17:00"
     }
   ],
-  "skus": ["SKU-A"],
+  "skus": [
+    "SKU-A",
+    "SKU-B",
+    "SKU-C",
+    "SKU-D"
+  ],
   "metrics": {
-    "SKU-A": 3.08
+    "SKU-A": 3.55,
+    "SKU-B": 2.21,
+    "SKU-C": 5.34,
+    "SKU-D": 1.86
   }
 }
